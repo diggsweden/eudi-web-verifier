@@ -12,9 +12,9 @@ import {EventLog} from "@core/models/EventLog";
 import { HttpHeaders } from "@angular/common/http";
 import {ActiveTransaction} from "@core/models/ActiveTransaction";
 
-const SAME_DEVICE_UI_RE_ENTRY_URL = '/get-wallet-code?response_code={RESPONSE_CODE}';
-const PRESENTATIONS_ENDPOINT = 'ui/presentations';
-const VALIDATE_SD_JWT_VC_PRESENTATION_ENDPOINT = 'utilities/validations/sdJwtVc';
+const SAME_DEVICE_UI_RE_ENTRY_URL = '/verifier/get-wallet-code?response_code={RESPONSE_CODE}';
+const PRESENTATIONS_ENDPOINT = 'verifier/ui/presentations';
+const VALIDATE_SD_JWT_VC_PRESENTATION_ENDPOINT = 'verifier/utilities/validations/sdJwtVc';
 
 @Injectable()
 export class VerifierEndpointService {

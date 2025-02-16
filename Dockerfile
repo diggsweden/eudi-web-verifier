@@ -12,5 +12,5 @@ RUN yarn run build
 # Stage 2
 FROM nginx
 COPY /nginx/templates/nginx.conf.template /etc/nginx/templates/nginx.conf.template
-COPY --from=build-step /usr/src/app/dist/verifier-ui/browser /usr/share/nginx/html
+COPY --from=build-step /usr/src/app/dist/verifier-ui/browser /usr/share/nginx/html/verifier
 EXPOSE 4300
