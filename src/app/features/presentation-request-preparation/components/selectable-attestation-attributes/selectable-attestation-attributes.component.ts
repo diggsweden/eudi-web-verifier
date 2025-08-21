@@ -1,6 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormSelectableField } from '@core/models/FormSelectableField';
-import { InputDescriptor } from '@core/models/presentation/InputDescriptor';
 import { AttestationFormat } from '@core/models/attestation/AttestationFormat';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -17,6 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { DialogData } from '@features/presentation-request-preparation/components/selectable-attestation-attributes/model/DialogData';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatBadgeModule } from '@angular/material/badge';
+import { RecursiveCheckboxComponent } from '../recursive-checkbox/recursive-checkbox.component';
 
 @Component({
   selector: 'vc-selectable-attestation-attributes',
@@ -30,7 +30,8 @@ import { MatBadgeModule } from '@angular/material/badge';
     MatDialogModule,
     MatButtonModule,
     MatTabsModule,
-    MatBadgeModule
+    MatBadgeModule,
+    RecursiveCheckboxComponent
   ],
 })
 export class SelectableAttestationAttributesComponent implements OnInit {
@@ -47,7 +48,12 @@ export class SelectableAttestationAttributesComponent implements OnInit {
   formFields!: FormSelectableField[];
   selectedFields: string[] = [];
 
-  constructor(private dialogRef: MatDialogRef<InputDescriptor>) {}
+  boundIsChecked = (field: string) => this.isChecked(field);
+  boundHandle = (data: FormSelectableField) => this.handle(data);
+  boundTrackByFn = (index: number, data: FormSelectableField) => this.trackByFn(index, data);
+  
+  
+  constructor(private dialogRef: MatDialogRef<null>) {}
 
   ngOnInit(): void {
     this.attestationFormat = this.data.format;
@@ -61,7 +67,6 @@ export class SelectableAttestationAttributesComponent implements OnInit {
 
   handle(data: FormSelectableField) {
     const value = data.value;
-    console.log('Selected field: ', value);
     if (!this.exists(value)) {
       this.selectedFields.push(value);
     } else if (this.exists(value)) {
@@ -84,14 +89,24 @@ export class SelectableAttestationAttributesComponent implements OnInit {
     if (!attestation) {
       return [];
     }
-    return attestation.attestationDef.dataSet.map((attr, index) => {
+  
+    // Recursive function to handle attributes at any nesting level
+    const mapAttributeRecursively = (attr: any, index: number): FormSelectableField => {
       return {
         id: index,
         label: attr.attribute,
         value: attr.identifier,
         visible: true,
+        nested: attr.nested?.map((nestedAttr: any, nestedIndex: number) => 
+          mapAttributeRecursively(nestedAttr, nestedIndex)
+        )
       };
-    });
+    };
+  
+    // Apply the recursive mapping to top-level attributes
+    return attestation.attestationDef.dataSet.map((attr, index) => 
+      mapAttributeRecursively(attr, index)
+    );
   }
 
   trackByFn(_index: number, data: FormSelectableField) {
@@ -109,7 +124,7 @@ export class SelectableAttestationAttributesComponent implements OnInit {
 
   isChecked(field: string) {
     return (
-      this.selectedFields.filter((item) => {
+      this.selectedFields?.filter((item) => {
         return item === field;
       }).length > 0
     );

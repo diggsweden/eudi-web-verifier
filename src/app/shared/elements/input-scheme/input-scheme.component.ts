@@ -21,7 +21,6 @@ export class InputSchemeComponent implements OnInit {
 
 
 	readonly localStorageService: LocalStorageService = inject(LocalStorageService);
-	schemePattern = '([a-zA-Z0-9-]{2,20})://';
 	schemeControl = new FormControl('', [Validators.required]);
 	matcher = new ErrorStateMatcher();
 
@@ -32,7 +31,6 @@ export class InputSchemeComponent implements OnInit {
 	}
 
 	save () {
-		console.log(this.schemeControl);
 		const {value} = this.schemeControl;
 		if (value) {
 			this.localStorageService.set(SCHEME, value);

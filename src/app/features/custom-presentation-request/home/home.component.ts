@@ -1,7 +1,6 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit} from '@angular/core';
 import {Subject} from 'rxjs';
 import {filter, takeUntil} from 'rxjs/operators';
-import {DataService} from '@core/services/data.service';
 import {NavigateService} from '@core/services/navigate.service';
 import {NavigationEnd, Router} from '@angular/router';
 import {BodyAction} from '@shared/elements/body-actions/models/BodyAction';
@@ -9,6 +8,7 @@ import {PRESENTATION_ACTIONS} from '@core/constants/pages-actions';
 import {ActionCode} from '@shared/elements/body-actions/models/ActionCode';
 import {VerifierEndpointService} from "@core/services/verifier-endpoint.service";
 import {TransactionInitializationRequest} from "@core/models/TransactionInitializationRequest";
+import { DataService } from '@app/core/services/data-service';
 
 @Component({
     selector: 'vc-home',
@@ -38,7 +38,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.dataService.presentationDefinitionRequest$.subscribe((code) => {
+    this.dataService.customRequest$.subscribe((code) => {
       this.requestCode = code;
       this.disableNextButton(code);
     });

@@ -16,7 +16,6 @@ import {ConcludedTransaction} from "@core/models/ConcludedTransaction";
 import {QRCodeComponent} from 'angularx-qrcode';
 import {SafeUrl} from "@angular/platform-browser";
 import {ActiveTransaction} from "@core/models/ActiveTransaction";
-import { isDCQLTransactionRequest } from '@app/core/models/TransactionInitializationRequest';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -80,7 +79,7 @@ export class QrCodeComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.transaction = JSON.parse(
-      this.localStorageService.get(ACTIVE_TRANSACTION)!!
+      this.localStorageService.get(ACTIVE_TRANSACTION)!
     );
     if (!this.transaction) {
       this.navigateService.goHome();
@@ -122,9 +121,7 @@ export class QrCodeComponent implements OnInit, OnDestroy {
   private concludeTransaction(response: WalletResponse): ConcludedTransaction {
     let concludedTransaction = {
       transactionId: this.transaction.initialized_transaction.transaction_id,
-      presentationQuery: isDCQLTransactionRequest(this.transaction.initialization_request!!) ?
-                this.transaction.initialization_request!!.dcql_query
-              : this.transaction.initialization_request!!.presentation_definition,
+      presentationQuery: this.transaction.initialization_request!!.dcql_query,
       walletResponse: response,
       nonce: this.transaction.initialization_request.nonce
     }
@@ -134,8 +131,8 @@ export class QrCodeComponent implements OnInit, OnDestroy {
     return concludedTransaction;
   }
 
-  private buildQrCode(data: { client_id: string, request_uri: string, transaction_id: string }): string {
-    return `${this.scheme}?client_id=${encodeURIComponent(data.client_id)}&request_uri=${encodeURIComponent(data.request_uri)}`;
+  private buildQrCode(data: { client_id: string, request_uri: string, request_uri_method: 'get' | 'post', transaction_id: string }): string {
+    return `${this.scheme}?client_id=${encodeURIComponent(data.client_id)}&request_uri=${encodeURIComponent(data.request_uri)}&request_uri_method=${encodeURIComponent(data.request_uri_method)}`;
   }
 
   openLogs() {

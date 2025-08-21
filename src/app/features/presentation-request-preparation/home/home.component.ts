@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { NavigateService } from '@app/core/services/navigate.service';
 import { HOME_ACTIONS } from '@core/constants/pages-actions';
 import { BodyAction } from '@app/shared/elements/body-actions/models/BodyAction';
@@ -7,7 +7,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { SharedModule } from '@shared/shared.module';
 import { WalletLayoutComponent } from '@core/layout/wallet-layout/wallet-layout.component';
 import { MatDialogModule } from '@angular/material/dialog';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { SupportedAttestationsComponent } from '@features/presentation-request-preparation/components/supported-attestations/supported-attestations.component';
 import { MatStepperModule } from '@angular/material/stepper';
 import {
@@ -27,8 +27,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { ClipboardModule } from '@angular/cdk/clipboard';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AttributesSelectionEvent } from '../models/AttributesSelection';
-import { PresentationDefinitionService } from '@app/core/services/presentation-definition-service';
 import { DCQLService } from '@app/core/services/dcql-service';
+import { Subject } from 'rxjs';
+import { SessionStorageService } from '@app/core/services/session-storage.service';
+import { ISSUER_CHAIN } from '@app/core/constants/general';
 
 @Component({
   imports: [
@@ -55,55 +57,63 @@ import { DCQLService } from '@app/core/services/dcql-service';
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
 })
-export class HomeComponent {
+export class HomeComponent implements OnDestroy {
   constructor(
     private readonly navigateService: NavigateService,
     private readonly verifierEndpointService: VerifierEndpointService,
-    private readonly presentationDefinitionService: PresentationDefinitionService,
-    private readonly dcqlService: DCQLService
+    private readonly dcqlService: DCQLService,
+    private readonly sessionStorageService: SessionStorageService,
   ) {}
 
   actions: BodyAction[] = HOME_ACTIONS;
 
-  queryTypeControl = new FormControl('prex');
+  requestUriMethodControl = new FormControl('get');
 
-  private _formBuilder = inject(FormBuilder);
+
+  private readonly _formBuilder = inject(FormBuilder);
   formGroup = this._formBuilder.group({
     selectAttestationCtrl: ['', Validators.required],
   });
 
   selectedAttestations: AttestationSelection[] | null = null;
   selectedAttributes: { [id: string]: string[] } | null = null;
-  selectedPresentationType: 'dcql' | 'prex' = 'prex';
+  selectedRequestUriMethod: 'get' | 'post' = 'get';
 
   initializationRequest: TransactionInitializationRequest | null = null;
+
+  private readonly destroy$ = new Subject<void>();
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   handleSelectionChangedEvent($event: AttestationSelection[]) {
     this.selectedAttestations = $event;
   }
 
   handleAttributesCollectedEvent($event: AttributesSelectionEvent) {
-    if ($event != null && $event.selectedAttributes != null) {
+    if ($event?.selectedAttributes) {
       this.selectedAttributes = $event.selectedAttributes;
 
       this.initializationRequest = this.prepareInitializationRequest(
-        this.selectedPresentationType,
         this.selectedAttestations!,
-        this.selectedAttributes
+        this.selectedAttributes,
+        this.selectedRequestUriMethod
       );
     } else {
       this.selectedAttributes = null;
     }
   }
 
-  handleQueryTypeChangedEvent($event: string) {
-    this.selectedPresentationType = $event as 'dcql' | 'prex';
+  handleRequestUriMethodChangedEvent($event: string) {
+    this.selectedRequestUriMethod = $event as 'get' | 'post';
 
     if (this.selectedAttestations && this.selectedAttributes) {
       this.initializationRequest = this.prepareInitializationRequest(
-        this.selectedPresentationType,
-        this.selectedAttestations!,
-        this.selectedAttributes
+        this.selectedAttestations,
+        this.selectedAttributes,
+        this.selectedRequestUriMethod
       );
     } else {
       this.initializationRequest = null;
@@ -111,15 +121,18 @@ export class HomeComponent {
   }
 
   private prepareInitializationRequest(
-    presentationQueryType: 'dcql' | 'prex',
     selectedAttestations: AttestationSelection[],
-    selectedAttributes: { [id: string]: string[] }
+    selectedAttributes: { [id: string]: string[] },
+    selectedRequestUriMethod: 'get' | 'post'
   ): TransactionInitializationRequest {
-    if (presentationQueryType === 'dcql') {
-      return this.dcqlService.dcqlPresentationRequest(selectedAttestations, selectedAttributes);
-    } else {
-      return this.presentationDefinitionService.presentationDefinitionRequest(selectedAttestations, selectedAttributes);
-    }
+
+    const issuerChain = this.sessionStorageService.get(ISSUER_CHAIN) ?? undefined;
+
+    return this.dcqlService.dcqlPresentationRequest(
+      selectedAttestations,
+      selectedAttributes,
+      selectedRequestUriMethod,
+      issuerChain);
   }
 
   proceedToInvokeWallet() {
@@ -138,22 +151,18 @@ export class HomeComponent {
   attestationsSelected(): boolean {
     return this.selectedAttestations !== null
       && this.selectedAttestations
-      .filter((attestation) => 
+      .filter((attestation) =>
         attestation.format !== null && attestation.attributeSelectionMethod !== null
       ).
       length > 0;
   }
 
   attributesSelected(): boolean {
-    return this.selectedAttestations !== null 
+    return this.selectedAttestations !== null
     && this.selectedAttestations.filter((attestation) => {
       if(attestation.attributeSelectionMethod === AttributeSelectionMethod.SELECTABLE) {
         return this.selectedAttributes?.[attestation.type]?.length?? 0 > 0;
-      } else if(attestation.attributeSelectionMethod === AttributeSelectionMethod.ALL_ATTRIBUTES) {
-        return true;
-      } else {
-        return false;
-      }
+      } else return attestation.attributeSelectionMethod === AttributeSelectionMethod.ALL_ATTRIBUTES;
     }).length === this.selectedAttestations.length;
   }
 
